@@ -8,6 +8,8 @@ use burn::nn::pool::MaxPool2dConfig;
 use burn::nn::Dropout;
 use burn::nn::DropoutConfig;
 use burn::nn::PaddingConfig2d;
+use burn::nn::LinearConfig;
+use burn::nn::Linear;
 use burn::record::BinBytesRecorder;
 use burn::record::FullPrecisionSettings;
 use burn::record::Recorder;
@@ -50,6 +52,7 @@ pub struct Model<B: Backend> {
     dropout1: Dropout,
     conv2d26: Conv2d<B>,
     averagepool2d1: AvgPool2d,
+    linear: Linear<B>,
     phantom: core::marker::PhantomData<B>,
 }
 
@@ -63,7 +66,7 @@ impl<B: Backend> Default for Model<B> {
 
 impl<B: Backend> Model<B> {
     pub fn from_embedded() -> Self {
-        let record = BinBytesRecorder::<FullPrecisionSettings>::default()
+        let record:ModelRecord<B> = BinBytesRecorder::<FullPrecisionSettings>::default()
             .load(EMBEDDED_STATES.to_vec())
             .expect("Failed to decode state");
         Self::new_with(record)
@@ -276,6 +279,9 @@ impl<B: Backend> Model<B> {
             .with_padding(PaddingConfig2d::Valid)
             .with_count_include_pad(false)
             .init();
+        let linear = LinearConfig::new(1000, 2)
+            .init();
+
         Self {
             conv2d1,
             maxpool2d1,
@@ -308,6 +314,7 @@ impl<B: Backend> Model<B> {
             dropout1,
             conv2d26,
             averagepool2d1,
+            linear,
             phantom: core::marker::PhantomData,
         }
     }
@@ -517,6 +524,10 @@ impl<B: Backend> Model<B> {
             .with_padding(PaddingConfig2d::Valid)
             .with_count_include_pad(false)
             .init();
+        let linear = LinearConfig::new(1000, 2)
+            .with_bias(true)
+            .init();
+
         Self {
             conv2d1,
             maxpool2d1,
@@ -549,6 +560,7 @@ impl<B: Backend> Model<B> {
             dropout1,
             conv2d26,
             averagepool2d1,
+            linear,
             phantom: core::marker::PhantomData,
         }
     }
@@ -621,6 +633,7 @@ impl<B: Backend> Model<B> {
         let relu26_out1 = burn::tensor::activation::relu(conv2d26_out1);
         let averagepool2d1_out1 = self.averagepool2d1.forward(relu26_out1);
         let reshape1_out1 = averagepool2d1_out1.reshape([0, -1]);
-        reshape1_out1
+        let final_output = self.linear.forward(reshape1_out1);
+        final_output
     }
 }

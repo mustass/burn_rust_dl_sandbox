@@ -16,7 +16,7 @@ type Backend = NdArray<f32>;
 
 fn main() {
     // Path to the image from the main args
-    let img_path = std::env::args().nth(1).expect("No image path provided");
+    let img_path ="/home/sm/Dropbox/DTU/rtc/rtmls/squeezenet-2/samples/bridge.jpg";
 
     // Load the image
     let img = image::open(&img_path).unwrap_or_else(|_| panic!("Failed to load image: {img_path}"));
